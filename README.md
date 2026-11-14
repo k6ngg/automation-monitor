@@ -21,7 +21,7 @@ Automação **100% somente leitura** em Playwright para verificar os monitores d
 *(O Chromium do Playwright já está instalado na sua máquina).*
 
 ```bash
-cd /home/leonardo/.gemini/antigravity/scratch/dealernet-monitor
+cd /home/user/dealernet-monitor
 
 # Rodar em segundo plano (headless) e gerar o PDF em ./relatorios/
 npm start
@@ -32,6 +32,6 @@ npm run visivel
 
 ## Onde alterar configurações
 
-- [.env](file:///home/leonardo/.gemini/antigravity/scratch/dealernet-monitor/.env): usuário, senha, modo `HEADLESS` e limite de páginas por status.
-- [config.mjs](file:///home/leonardo/.gemini/antigravity/scratch/dealernet-monitor/config.mjs): lista de unidades DSI, unidades Renave e status verificados.
-- [verificar-integracoes.mjs](file:///home/leonardo/.gemini/antigravity/scratch/dealernet-monitor/verificar-integracoes.mjs): script principal (somente leitura).
+- [.env](file:///home/user/dealernet-monitor/.env): usuário, senha, modo `HEADLESS` e limite de páginas por status.
+- [config.mjs](file:///home/user/dealernet-monitor/config.mjs): lista de unidades DSI, unidades Renave e status verificados.
+- [verificar-integracoes.mjs](file:///home/user/dealernet-monitor/verificar-integracoes.mjs): script principal (somente leitura).
