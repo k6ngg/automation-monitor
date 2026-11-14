@@ -8,7 +8,7 @@ Automação **100% somente leitura** em Playwright para verificar os monitores d
 2. Abre `Integração > Cadastro > Monitor` (`wwmonitorsistema.aspx`).
 3. Filtra sempre do **dia 01 do mês atual (`00:00`) até a data atual (`23:59`)**.
 4. Verifica os 4 status: **Erro (`ERR`)**, **Outros Erros (`OUT`)**, **Com Inconsistências (`INC`)** e **Pendente (`PEN`)**:
-   - **DSI (`Sistema = DSI`)++
+   - **DSI (`Sistema = DSI`)**
    - **Renave (`Sistema = RNV`)**: todas as unidades ativas.
 5. Aplica automaticamente a regra do chamado para a Nissan: **despreza erros da Ficha GAMA quando a data do erro for o dia atual**.
 6. Salva na pasta `./relatorios/`:
