@@ -1,0 +1,15 @@
+{
+  "name": "dealernet-monitor",
+  "version": "1.0.0",
+  "description": "Automação somente-leitura para verificação dos monitores de integração DealerNet (DSI/NDI e Renave)",
+  "type": "module",
+  "scripts": {
+    "start": "node verificar-integracoes.mjs",
+    "visivel": "HEADLESS=false node verificar-integracoes.mjs",
+    "setup": "npx playwright install chromium"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.7",
+    "playwright": "^1.50.0"
+  }
+}
