@@ -80,12 +80,17 @@ function escaparHtml(str = '') {
  */
 async function autenticarEAbrirMonitor(page) {
   console.log('-> Acessando portal DealerNet...');
-  await page.goto(DEALERNET_URL, { waitUntil: 'domcontentloaded', timeout: 60000 });
+  await page.goto(DEALERNET_URL, { waitUntil: 'load', timeout: 60000 });
 
   const userField = page.locator(
     '#vUSUARIO_IDENTIFICADORALTERNATIVO, input[name*="USUARIO_IDENTIFICADOR"]'
   );
-  if ((await userField.count()) > 0 && (await userField.first().isVisible())) {
+  const btnIntegracao = page.getByRole('button', { name: 'Integração' });
+
+  // Aguarda o redirecionamento estabilizar na tela de login ou no portal já autenticado
+  await userField.first().or(btnIntegracao).waitFor({ state: 'visible', timeout: 30000 });
+
+  if (await userField.first().isVisible()) {
     console.log(`-> Realizando login com usuário ${DEALERNET_USER}...`);
     await userField.first().fill(DEALERNET_USER);
     await page
@@ -93,14 +98,12 @@ async function autenticarEAbrirMonitor(page) {
       .first()
       .fill(DEALERNET_PASS);
     await page
-      .locator('#IMAGE3, input[name="IMAGE3"], input[type="image"]')
-      .first()
+      .locator('#IMAGE3')
       .click();
-    await page.waitForTimeout(3500);
+    await btnIntegracao.waitFor({ state: 'visible', timeout: 30000 });
   }
 
   console.log('-> Abrindo menu Integração > Cadastro > Monitor...');
-  const btnIntegracao = page.getByRole('button', { name: 'Integração' });
   await btnIntegracao.waitFor({ state: 'visible', timeout: 15000 });
   await btnIntegracao.click();
   await page.waitForTimeout(500);
@@ -137,6 +140,37 @@ async function selecionarDropdownGX(frame, selector, value) {
 }
 
 /**
+ * Aguarda o overlay de carregamento AJAX do GeneXus desaparecer
+ */
+async function aguardarLoadingGX(frame, timeout = 30000) {
+  await frame
+    .locator('#gx_ajax_notification')
+    .waitFor({ state: 'hidden', timeout })
+    .catch(() => null);
+}
+
+/**
+ * Executa um clique que dispara POST AJAX do GeneXus no iframe e aguarda a resposta real
+ */
+async function clicarEAguardarAjax(page, frame, locator, timeout = 30000) {
+  await aguardarLoadingGX(frame, timeout);
+
+  const responsePromise = page
+    .waitForResponse(
+      (resp) =>
+        resp.url().includes('wwmonitorsistema.aspx') &&
+        resp.request().method() === 'POST',
+      { timeout }
+    )
+    .catch(() => null);
+
+  await locator.click({ timeout });
+  await responsePromise;
+  await aguardarLoadingGX(frame, timeout);
+  await page.waitForTimeout(300);
+}
+
+/**
  * Extrai as linhas visíveis na tabela do Monitor
  */
 async function extrairLinhasDaPagina(frame) {
@@ -156,6 +190,7 @@ async function extrairLinhasDaPagina(frame) {
     const cols = line.split('\t').map((c) => c.trim());
     return {
       raw: line,
+      cols,
       codigo: cols[0] || '',
       integracao: cols[1] || '',
       data: cols[2] || '',
@@ -167,12 +202,20 @@ async function extrairLinhasDaPagina(frame) {
 /**
  * Executa a consulta para uma combinação de Empresa + Status e percorre a paginação (somente leitura)
  */
-async function consultarStatus(page, frame, statusCode, maxPages = MAX_PAGES) {
+async function consultarStatus(page, frame, statusObj, maxPages = MAX_PAGES) {
+  const { code: statusCode, label: statusLabel } = statusObj;
+
   await selecionarDropdownGX(frame, '#vMONITOR_STATUS', statusCode);
   await page.waitForTimeout(250);
 
-  await frame.locator('#IMGATUALIZAR').click();
-  await page.waitForTimeout(2000);
+  // Garante que o dropdown manteve o valor antes de disparar a pesquisa
+  const statusAtual = await frame.locator('#vMONITOR_STATUS').inputValue();
+  if (statusAtual !== statusCode) {
+    await selecionarDropdownGX(frame, '#vMONITOR_STATUS', statusCode);
+    await page.waitForTimeout(250);
+  }
+
+  await clicarEAguardarAjax(page, frame, frame.locator('#IMGATUALIZAR'));
 
   const todasLinhas = [];
   let paginaAtual = 1;
@@ -180,7 +223,12 @@ async function consultarStatus(page, frame, statusCode, maxPages = MAX_PAGES) {
 
   while (paginaAtual <= maxPages) {
     const linhas = await extrairLinhasDaPagina(frame);
-    for (const l of linhas) {
+    // Garante que só contabiliza registros cujo Status na tabela corresponde ao filtro pedido
+    const linhasDoStatus = linhas.filter((l) =>
+      l.cols.some((c) => c.toLowerCase() === statusLabel.toLowerCase())
+    );
+
+    for (const l of linhasDoStatus) {
       if (!todasLinhas.some((existente) => existente.raw === l.raw)) {
         todasLinhas.push(l);
       }
@@ -193,8 +241,12 @@ async function consultarStatus(page, frame, statusCode, maxPages = MAX_PAGES) {
       break;
     }
 
-    await nextBtn.first().click();
-    await page.waitForTimeout(1800);
+    try {
+      await clicarEAguardarAjax(page, frame, nextBtn.first(), 15000);
+    } catch {
+      // Se o botão de próxima página foi removido durante a atualização, encerra a paginação com segurança
+      break;
+    }
     paginaAtual++;
   }
 
@@ -301,7 +353,7 @@ async function main() {
       let desprezadosFichaGamaHoje = 0;
 
       for (const st of STATUS_ALVO) {
-        const res = await consultarStatus(page, frame, st.code, MAX_PAGES);
+        const res = await consultarStatus(page, frame, st, MAX_PAGES);
 
         const filtrados = res.registros.filter((reg) => {
           const ehFichaGama = reg.raw.includes('Ficha Gama');
@@ -354,7 +406,7 @@ async function main() {
 
       const ocorrencias = [];
       for (const st of STATUS_ALVO) {
-        const res = await consultarStatus(page, frame, st.code, 2);
+        const res = await consultarStatus(page, frame, st, 2);
         for (const r of res.registros) {
           ocorrencias.push({ statusCode: st.code, statusLabel: st.label, ...r });
         }
