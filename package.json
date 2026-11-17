@@ -4,12 +4,15 @@
   "description": "Automação somente-leitura para verificação dos monitores de integração DealerNet (DSI/NDI e Renave)",
   "type": "module",
   "scripts": {
-    "start": "node verificar-integracoes.mjs",
-    "visivel": "HEADLESS=false node verificar-integracoes.mjs",
-    "setup": "npx playwright install chromium"
+    "start": "node src/index.mjs",
+    "visivel": "HEADLESS=false node src/index.mjs",
+    "setup": "npx playwright install chromium",
+    "test": "node --test test/*.test.mjs",
+    "check": "node --check verificar-integracoes.mjs && node --check src/index.mjs && npm test"
   },
   "dependencies": {
     "dotenv": "^16.4.7",
+    "nodemailer": "^10.6.0",
     "playwright": "^1.50.0"
   }
 }
