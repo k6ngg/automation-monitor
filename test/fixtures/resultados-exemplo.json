@@ -1,0 +1,86 @@
+{
+  "periodo": {
+    "dataHojePrefixo": "17/11/2026",
+    "dataInicio": "01/11/2026 00:00",
+    "dataFim": "17/11/2026 23:59",
+    "geradoEm": "17/11/2026 às 15:30",
+    "timestampArquivo": "2026-11-17_15-30"
+  },
+  "resultadosDSI": [
+    {
+      "code": "4",
+      "nome": "JADE - ITB",
+      "grupo": "NDI Nissan",
+      "desprezadosFichaGamaHoje": 2,
+      "porStatus": {
+        "ERR": {
+          "label": "Erro",
+          "atingiuLimitePaginas": false,
+          "registros": [
+            {
+              "raw": "101\tNDI\t16/11/2026 10:00\tErro\tFalha XML <tag>",
+              "cols": ["101", "NDI", "16/11/2026 10:00", "Erro", "Falha XML <tag>"],
+              "codigo": "101",
+              "integracao": "NDI",
+              "data": "16/11/2026 10:00",
+              "detalhes": "Erro | Falha XML <tag>"
+            }
+          ]
+        },
+        "OUT": { "label": "Outros Erros", "atingiuLimitePaginas": false, "registros": [] },
+        "INC": {
+          "label": "Com Inconsistencias",
+          "atingiuLimitePaginas": true,
+          "registros": [
+            {
+              "raw": "102\tNDI\t17/11/2026 09:00\tCom Inconsistências\tCampo CPF inválido",
+              "cols": ["102", "NDI", "17/11/2026 09:00", "Com Inconsistências", "Campo CPF inválido"],
+              "codigo": "102",
+              "integracao": "NDI",
+              "data": "17/11/2026 09:00",
+              "detalhes": "Com Inconsistências | Campo CPF inválido"
+            }
+          ]
+        },
+        "PEN": { "label": "Pendente", "atingiuLimitePaginas": false, "registros": [] }
+      }
+    },
+    {
+      "code": "12",
+      "nome": "TOPAZIO MATRIZ",
+      "grupo": "DSI Toyota",
+      "desprezadosFichaGamaHoje": 0,
+      "porStatus": {
+        "ERR": { "label": "Erro", "atingiuLimitePaginas": false, "registros": [] },
+        "OUT": { "label": "Outros Erros", "atingiuLimitePaginas": false, "registros": [] },
+        "INC": { "label": "Com Inconsistencias", "atingiuLimitePaginas": false, "registros": [] },
+        "PEN": { "label": "Pendente", "atingiuLimitePaginas": false, "registros": [] }
+      }
+    }
+  ],
+  "resultadosRenave": [
+    {
+      "code": "19",
+      "nome": "CRISTAL - ITB",
+      "limitesAtingidos": ["Erro"],
+      "ocorrencias": [
+        {
+          "statusCode": "ERR",
+          "statusLabel": "Erro",
+          "raw": "9001\tRNV\t17/11/2026 11:20\tErro\tChassi não encontrado",
+          "cols": ["9001", "RNV", "17/11/2026 11:20", "Erro", "Chassi não encontrado"],
+          "codigo": "9001",
+          "integracao": "RNV",
+          "data": "17/11/2026 11:20",
+          "detalhes": "Erro | Chassi não encontrado"
+        }
+      ]
+    },
+    {
+      "code": "20",
+      "nome": "CRISTAL - TXF",
+      "limitesAtingidos": [],
+      "ocorrencias": []
+    }
+  ]
+}
