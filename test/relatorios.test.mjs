@@ -52,11 +52,14 @@ test('geradores de relatório usam contagem dinâmica, escapam HTML e exibem fal
   assert.match(html, /Falha XML &lt;tag&gt;/);
   assert.match(html, /Novas: 2/);
   assert.match(html, /Ocorrências Resolvidas Desde a Última Execução/);
+  assert.match(html, /Plano de Ação e Resolução Consolidado/);
+  assert.match(html, /Diagnóstico &amp; Ação \(Doc\. Dealernet\)/);
   assert.match(html, /Timeout na consulta/);
   assert.match(html, /Limite de paginação do Renave atingido em/);
 
   const md = gerarRelatorioMarkdown(fixture.periodo, dsi, rnv, { comparacao, falhasColeta });
   assert.match(md, /## 2\. Renave \(2 Unidades Verificadas\)/);
+  assert.match(md, /## 3\. Plano de Ação e Resolução Consolidado/);
   assert.match(md, /\[NOVA\]/);
   assert.match(md, /## Unidades Não Verificadas/);
 
@@ -64,6 +67,7 @@ test('geradores de relatório usam contagem dinâmica, escapam HTML e exibem fal
   assert.match(txt, /RESUMO vs 16\/11\/2026 às 08:00: 2 nova\(s\)/);
   assert.match(txt, /ALERTA — UNIDADES NÃO VERIFICADAS \(1\):/);
   assert.match(txt, /2\) RENAVE \(2 UNIDADES VERIFICADAS\):/);
+  assert.match(txt, /3\) PLANO DE AÇÃO E RESOLUÇÃO \(DOC\. DEALERNET/);
 });
 
 test('salvarHtmlComoPdf gera PDF válido em disco via Chromium headless', async () => {
