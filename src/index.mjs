@@ -9,6 +9,7 @@ import {
   compararComSnapshot,
   salvarSnapshot,
 } from './comparador.mjs';
+import { anotarDiagnosticos } from './diagnosticador.mjs';
 import { criarLogger } from './logger.mjs';
 import { enviarRelatorioPorEmail, validarConfigEmail } from './notificador-email.mjs';
 import { obterPeriodoMesAtual } from './periodo.mjs';
@@ -128,8 +129,12 @@ export async function main() {
       timestampArquivo: periodo.timestampArquivo,
     });
 
-    resultadosDSI = resultadoDiff.resultadosDSI;
-    resultadosRenave = resultadoDiff.resultadosRenave;
+    const diagnosticado = anotarDiagnosticos({
+      resultadosDSI: resultadoDiff.resultadosDSI,
+      resultadosRenave: resultadoDiff.resultadosRenave,
+    });
+    resultadosDSI = diagnosticado.resultadosDSI;
+    resultadosRenave = diagnosticado.resultadosRenave;
     const { comparacao, snapshotParaSalvar } = resultadoDiff;
     const resumo = resumirExecucao(resultadosDSI, resultadosRenave, falhasColeta);
 

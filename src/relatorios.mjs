@@ -1,5 +1,6 @@
 import { chromium } from 'playwright';
 import { ORDEM_REENVIO_TOYOTA, STATUS_ALVO } from '../config.mjs';
+import { diagnosticarOcorrencia, gerarPlaybookResumo } from './diagnosticador.mjs';
 import { contarPorStatusDSI } from './regras.mjs';
 
 export function escaparHtml(str = '') {
@@ -67,6 +68,68 @@ function renderizarFalhasHtml(falhasColeta = []) {
   `;
 }
 
+function obterDiagnostico(reg, contexto) {
+  return reg?.diagnostico || diagnosticarOcorrencia(reg, contexto);
+}
+
+function formatarCelulaDiagnosticoHtml(reg, contexto) {
+  const diag = obterDiagnostico(reg, contexto);
+  const ordemHtml = diag.ordemPrecedencia
+    ? `<span class="badge badge-ordem">${escaparHtml(diag.ordemPrecedencia)}</span>`
+    : '';
+  return `
+    <div>
+      <span class="badge ${escaparHtml(diag.badgeClass)}">${escaparHtml(diag.acaoLabel)}</span>
+      ${ordemHtml}
+    </div>
+    <div style="margin-top:3px;"><strong>${escaparHtml(diag.titulo)}</strong></div>
+  `;
+}
+
+function renderizarPlaybookHtml(playbook = []) {
+  if (!playbook.length) {
+    return `
+      <h2>4. Plano de Ação e Resolução Consolidado (Doc. Dealernet)</h2>
+      <p class="ok-box">Nenhuma ocorrência pendente para ação corretiva no período.</p>
+    `;
+  }
+
+  const cartoes = playbook
+    .map((item) => {
+      const ordemHtml = item.ordemPrecedencia
+        ? `<span class="badge badge-ordem">${escaparHtml(item.ordemPrecedencia)}</span>`
+        : '';
+      const amostras = item.chavesAmostra.length
+        ? `<div><strong>Chaves/Amostras:</strong> <code>${item.chavesAmostra.map(escaparHtml).join('</code>, <code>')}</code></div>`
+        : '';
+
+      return `
+        <div class="playbook-card">
+          <div class="playbook-header">
+            <div>
+              <span class="badge ${escaparHtml(item.badgeClass)}">${escaparHtml(item.acaoLabel)}</span>
+              ${ordemHtml}
+              <strong>${escaparHtml(item.titulo)}</strong>
+            </div>
+            <span class="badge badge-count">${item.totalOcorrencias} ocorrência(s)</span>
+          </div>
+          <div class="playbook-body">
+            <div><strong>Unidades afetadas:</strong> ${escaparHtml(item.unidades.join(', '))}</div>
+            ${amostras}
+            <div><strong>Causa (Doc. Dealernet):</strong> ${escaparHtml(item.causa)}</div>
+            <div><strong>Como resolver:</strong> ${escaparHtml(item.passosResolucao)}</div>
+          </div>
+        </div>
+      `;
+    })
+    .join('');
+
+  return `
+    <h2>4. Plano de Ação e Resolução Consolidado — Doc. Dealernet (${playbook.length} tipo(s))</h2>
+    ${cartoes}
+  `;
+}
+
 function renderizarResolvidasHtml(comparacao) {
   if (!comparacao?.temComparacao || !comparacao.resolvidas?.length) return '';
   const linhas = comparacao.resolvidas
@@ -84,7 +147,7 @@ function renderizarResolvidasHtml(comparacao) {
     .join('');
 
   return `
-    <h2>4. Ocorrências Resolvidas Desde a Última Execução (${comparacao.resolvidas.length})</h2>
+    <h2>5. Ocorrências Resolvidas Desde a Última Execução (${comparacao.resolvidas.length})</h2>
     <table class="detail-table">
       <thead>
         <tr>
@@ -106,6 +169,7 @@ function renderizarResolvidasHtml(comparacao) {
  */
 export function gerarRelatorioHtml(periodo, resultadosDSI, resultadosRenave, opcoes = {}) {
   const { comparacao = null, falhasColeta = [] } = opcoes;
+  const playbook = gerarPlaybookResumo(resultadosDSI, resultadosRenave);
 
   const linhasResumoDSI = resultadosDSI
     .map((u) => {
@@ -140,6 +204,12 @@ export function gerarRelatorioHtml(periodo, resultadosDSI, resultadosRenave, opc
         if (regs.length > 15) ocultos += regs.length - 15;
 
         for (const r of regs.slice(0, 15)) {
+          const celulaDiag = formatarCelulaDiagnosticoHtml(r, {
+            sistema: 'DSI',
+            grupo: u.grupo,
+            statusCode: st.code,
+            statusLabel: st.label,
+          });
           itens.push(`
             <tr>
               <td>
@@ -150,6 +220,7 @@ export function gerarRelatorioHtml(periodo, resultadosDSI, resultadosRenave, opc
               <td>${escaparHtml(r.data)}</td>
               <td>${escaparHtml(r.integracao)}</td>
               <td class="detalhes">${escaparHtml(r.detalhes || r.raw)}</td>
+              <td class="diag-cell">${celulaDiag}</td>
             </tr>
           `);
         }
@@ -167,11 +238,12 @@ export function gerarRelatorioHtml(periodo, resultadosDSI, resultadosRenave, opc
           <table class="detail-table">
             <thead>
               <tr>
-                <th style="width:175px">Status</th>
-                <th style="width:90px">Código</th>
-                <th style="width:125px">Data</th>
-                <th style="width:100px">Integração</th>
+                <th style="width:140px">Status</th>
+                <th style="width:80px">Código</th>
+                <th style="width:110px">Data</th>
+                <th style="width:85px">Integração</th>
                 <th>Interface / Chave / Observação</th>
+                <th style="width:240px">Diagnóstico &amp; Ação (Doc. Dealernet)</th>
               </tr>
             </thead>
             <tbody>
@@ -201,11 +273,12 @@ export function gerarRelatorioHtml(periodo, resultadosDSI, resultadosRenave, opc
         <table class="detail-table">
           <thead>
             <tr>
-              <th style="width:180px">Unidade</th>
-              <th style="width:165px">Status</th>
-              <th style="width:90px">Código</th>
-              <th style="width:125px">Data</th>
+              <th style="width:155px">Unidade</th>
+              <th style="width:140px">Status</th>
+              <th style="width:80px">Código</th>
+              <th style="width:110px">Data</th>
               <th>Interface / Chave / Chassi / Observação</th>
+              <th style="width:240px">Diagnóstico &amp; Ação (Doc. Dealernet)</th>
             </tr>
           </thead>
           <tbody>
@@ -223,6 +296,11 @@ export function gerarRelatorioHtml(periodo, resultadosDSI, resultadosRenave, opc
                     <td><code>${escaparHtml(oc.codigo)}</code></td>
                     <td>${escaparHtml(oc.data)}</td>
                     <td class="detalhes">${escaparHtml(oc.detalhes || oc.raw)}</td>
+                    <td class="diag-cell">${formatarCelulaDiagnosticoHtml(oc, {
+                      sistema: 'RNV',
+                      statusCode: oc.statusCode,
+                      statusLabel: oc.statusLabel,
+                    })}</td>
                   </tr>
                 `
                   )
@@ -330,6 +408,38 @@ export function gerarRelatorioHtml(periodo, resultadosDSI, resultadosRenave, opc
     .badge-pen { background: #dbeafe; color: #1e40af; }
     .badge-nova { background: #ede9fe; color: #6d28d9; border: 1px solid #c4b5fd; }
     .badge-persistente { background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; }
+    .badge-diag-bloqueio { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
+    .badge-diag-cadastro { background: #fef3c7; color: #92400e; border: 1px solid #fcd34d; }
+    .badge-diag-infra { background: #fae8ff; color: #86198f; border: 1px solid #e879f9; }
+    .badge-diag-reenviar { background: #dcfce7; color: #166534; border: 1px solid #86efac; }
+    .badge-diag-aguardar { background: #e0f2fe; color: #075985; border: 1px solid #7dd3fc; }
+    .badge-ordem { background: #f1f5f9; color: #334155; border: 1px solid #cbd5e1; }
+    .badge-count { background: #0f172a; color: #ffffff; }
+    .diag-cell { font-size: 9.5px; line-height: 1.35; }
+    .playbook-card {
+      border: 1px solid #cbd5e1;
+      border-radius: 5px;
+      margin-bottom: 8px;
+      background: #ffffff;
+      page-break-inside: avoid;
+    }
+    .playbook-header {
+      background: #f8fafc;
+      border-bottom: 1px solid #e2e8f0;
+      padding: 6px 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+    }
+    .playbook-body {
+      padding: 6px 10px;
+      font-size: 10px;
+      line-height: 1.45;
+    }
+    .playbook-body > div {
+      margin-bottom: 2px;
+    }
     .unit-block {
       page-break-inside: avoid;
       margin-bottom: 10px;
@@ -424,6 +534,8 @@ export function gerarRelatorioHtml(periodo, resultadosDSI, resultadosRenave, opc
   <h2>3. Detalhamento de Ocorrências — DSI (Por Unidade)</h2>
   ${blocosDetalhesDSI || '<p class="ok-box">Nenhuma ocorrência pendente ou com erro nas unidades DSI verificadas.</p>'}
 
+  ${renderizarPlaybookHtml(playbook)}
+
   ${renderizarResolvidasHtml(comparacao)}
 
   <div class="ref-box">
@@ -439,6 +551,7 @@ export function gerarRelatorioHtml(periodo, resultadosDSI, resultadosRenave, opc
  */
 export function gerarRelatorioMarkdown(periodo, resultadosDSI, resultadosRenave, opcoes = {}) {
   const { comparacao = null, falhasColeta = [] } = opcoes;
+  const playbook = gerarPlaybookResumo(resultadosDSI, resultadosRenave);
   const linhas = [];
 
   linhas.push(`# Relatório de Verificação de Integrações DealerNet`);
@@ -491,7 +604,13 @@ export function gerarRelatorioMarkdown(periodo, resultadosDSI, resultadosRenave,
         );
         for (const item of lista.slice(0, 15)) {
           const tag = formatarDeltaTexto(item, comparacao);
-          linhas.push(`  - ${tag}\`${item.raw.replace(/\t+/g, ' | ')}\``);
+          const diag = obterDiagnostico(item, {
+            sistema: 'DSI',
+            grupo: u.grupo,
+            statusCode: st.code,
+            statusLabel: st.label,
+          });
+          linhas.push(`  - ${tag}\`${item.raw.replace(/\t+/g, ' | ')}\` — _${diag.acaoLabel}_`);
         }
       }
     }
@@ -512,14 +631,33 @@ export function gerarRelatorioMarkdown(periodo, resultadosDSI, resultadosRenave,
       linhas.push(`### ${u.nome}${avisoLimite}`);
       for (const oc of u.ocorrencias) {
         const tag = formatarDeltaTexto(oc, comparacao);
-        linhas.push(`- ${tag}**[${oc.statusLabel}]** \`${oc.raw.replace(/\t+/g, ' | ')}\``);
+        const diag = obterDiagnostico(oc, {
+          sistema: 'RNV',
+          statusCode: oc.statusCode,
+          statusLabel: oc.statusLabel,
+        });
+        linhas.push(
+          `- ${tag}**[${oc.statusLabel}]** \`${oc.raw.replace(/\t+/g, ' | ')}\` — _${diag.acaoLabel}_`
+        );
       }
       linhas.push('');
     }
   }
 
+  if (playbook.length > 0) {
+    linhas.push(`\n## 3. Plano de Ação e Resolução Consolidado (Doc. Dealernet)\n`);
+    for (const p of playbook) {
+      const ordem = p.ordemPrecedencia ? ` | Ordem: ${p.ordemPrecedencia}` : '';
+      const amostras = p.chavesAmostra.length ? ` | Chaves: \`${p.chavesAmostra.join('`, `')}\`` : '';
+      linhas.push(`- **[${p.acaoLabel}${ordem}] ${p.titulo}** (${p.totalOcorrencias} ocorrência(s))`);
+      linhas.push(`  - **Unidades:** ${p.unidades.join(', ')}${amostras}`);
+      linhas.push(`  - **Causa:** ${p.causa}`);
+      linhas.push(`  - **Como resolver:** ${p.passosResolucao}`);
+    }
+  }
+
   if (comparacao?.temComparacao && comparacao.resolvidas?.length > 0) {
-    linhas.push(`\n## 3. Ocorrências Resolvidas Desde a Última Execução\n`);
+    linhas.push(`\n## 4. Ocorrências Resolvidas Desde a Última Execução\n`);
     for (const r of comparacao.resolvidas) {
       linhas.push(
         `- **[${r.sistema} | ${r.unidadeNome} | ${r.statusLabel}]** \`${(r.raw || r.codigo).replace(/\t+/g, ' | ')}\``
@@ -540,6 +678,7 @@ export function gerarRelatorioMarkdown(periodo, resultadosDSI, resultadosRenave,
  */
 export function gerarResumoChamadoTxt(periodo, resultadosDSI, resultadosRenave, opcoes = {}) {
   const { comparacao = null, falhasColeta = [] } = opcoes;
+  const playbook = gerarPlaybookResumo(resultadosDSI, resultadosRenave);
   const l = [];
 
   l.push(`VERIFICAÇÃO DE INTEGRAÇÕES DEALERNET (${periodo.dataInicio} a ${periodo.dataFim})`);
@@ -593,8 +732,19 @@ export function gerarResumoChamadoTxt(periodo, resultadosDSI, resultadosRenave, 
     }
   }
 
+  if (playbook.length > 0) {
+    l.push(`\n3) PLANO DE AÇÃO E RESOLUÇÃO (DOC. DEALERNET — ${playbook.length} TIPO(S)):`);
+    for (const p of playbook) {
+      const amostras = p.chavesAmostra.length ? ` | Chaves: ${p.chavesAmostra.join(', ')}` : '';
+      l.push(
+        `- [${p.acaoLabel}] ${p.titulo} (${p.totalOcorrencias}x em ${p.unidades.join(', ')}${amostras})`
+      );
+      l.push(`    -> ${p.passosResolucao}`);
+    }
+  }
+
   if (comparacao?.temComparacao && comparacao.resolvidas?.length > 0) {
-    l.push(`\n3) RESOLVIDAS DESDE A ÚLTIMA VERIFICAÇÃO (${comparacao.resolvidas.length}):`);
+    l.push(`\n4) RESOLVIDAS DESDE A ÚLTIMA VERIFICAÇÃO (${comparacao.resolvidas.length}):`);
     for (const r of comparacao.resolvidas.slice(0, 15)) {
       l.push(`- [${r.sistema} | ${r.unidadeNome} | ${r.statusLabel}] ${r.codigo} (${r.data})`);
     }
