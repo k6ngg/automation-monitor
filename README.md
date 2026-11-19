@@ -12,13 +12,14 @@ Automação **100% somente leitura** em Playwright para verificar os monitores d
    - **Renave (`Sistema = RNV`)**: todas as unidades ativas.
 5. Aplica automaticamente a regra da Nissan: **despreza erros da Ficha GAMA nas unidades JADE quando a data do registro for o dia atual**.
 6. Compara com a última execução (`relatorios/.ultimo-snapshot.json`) para destacar ocorrências **Novas**, **Persistentes** e **Resolvidas**.
-7. Isola falhas por unidade (salva evidência em `relatorios/erros/` e continua verificando as demais unidades, exibindo alerta no relatório caso alguma falhe).
-8. Salva na pasta `./relatorios/`:
-   - `relatorio-AAAA-MM-DD_HH-mm.pdf`: relatório completo em **PDF** (A4 paisagem, com tabelas coloridas por status e paginação).
+7. Classifica automaticamente cada ocorrência (**NDI Nissan**, **DSI Toyota** e **RENAVE**) segundo os procedimentos da Central de Ajuda Dealernet, indicando se é elegível para reenvio ordenado, ajuste cadastral, chamado técnico ou bloqueio de negócio (não reenviar), gerando um **Plano de Ação e Resolução Consolidado**.
+8. Isola falhas por unidade (salva evidência em `relatorios/erros/` e continua verificando as demais unidades, exibindo alerta no relatório caso alguma falhe).
+9. Salva na pasta `./relatorios/`:
+   - `relatorio-AAAA-MM-DD_HH-mm.pdf`: relatório completo em **PDF** (A4 paisagem, com tabelas coloridas por status, coluna de diagnóstico e paginação).
    - `relatorio-AAAA-MM-DD_HH-mm.md`: versão em Markdown.
    - `chamado-AAAA-MM-DD_HH-mm.txt`: resumo pronto para copiar e colar no chamado recorrente.
    - `execucao-AAAA-MM-DD_HH-mm.log`: log detalhado da execução.
-9. *(Opcional)* Envia o resumo e o PDF em anexo por e-mail via **Zoho Mail SMTP**.
+10. *(Opcional)* Envia o resumo e o PDF em anexo por e-mail via **Zoho Mail SMTP**.
 
 ## Instalação
 
